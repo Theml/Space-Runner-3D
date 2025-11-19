@@ -252,6 +252,20 @@ class GameController {
     }
   }
 
+   stopMenuMusic() {
+    if (this.menuMusic && this.menuMusic.isPlaying) {
+      try {
+        this.menuMusic.stop();
+      } catch (e) {}
+    }
+    if (this.htmlAudio) {
+      try {
+        this.htmlAudio.pause();
+        this.htmlAudio.currentTime = 0;
+      } catch (e) {}
+    }
+  }
+
   _tryBabylonFallback() {
     if (
       this.menuMusic &&
@@ -339,3 +353,4 @@ function quitGame() {
 window.addEventListener("DOMContentLoaded", () => {
   gameController = new GameController();
 });
+
