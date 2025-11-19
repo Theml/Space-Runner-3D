@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Space Runner 3D</title>
+  <link rel="preload" href="assets/sounds/Galactic-Drift.mp3" as="audio" crossorigin>
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+</head>
+
+<body>
+  <canvas id="renderCanvas"></canvas>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div id="score">Score: 0</div>
+    <div id="lives">Lives: ❤️ ❤️ ❤️</div>
+    <div id="powerups">Power-ups: <span id="activePowerups">None</span></div>
+    <div id="controls">WASD/Arrows: Move | SPACE: Shoot | ESC/P: Pause</div>
+  </div>
+
+  <!-- Menu Screen -->
+  <div id="menuScreen" class="screen">
+    <div class="screen-content">
+      <h1>SPACE RUNNER 3D</h1>
+      <p>Dodge asteroids. Collect power-ups. Survive!</p>
+      <button class="btn" onclick="startGame()">START GAME</button>
+      <p class="high-score-text">High Score: <span id="highScoreMenu">0</span></p>
+    </div>
+  </div>
+
+  <!-- Pause Screen -->
+  <div id="pauseScreen" class="screen hidden">
+    <div class="screen-content">
+      <h2>PAUSED</h2>
+      <button class="btn" onclick="resumeGame()">CONTINUE</button>
+      <button class="btn" onclick="goToMenu()">HOME</button>
+      <button class="btn btn-restart" onclick="quitGame()">QUIT</button>
+    </div>
+  </div>
+
+  <!-- Game Over Screen -->
+  <div id="gameOverScreen" class="screen hidden">
+    <div class="screen-content">
+      <h2 class="game-over-title">GAME OVER</h2>
+      <p class="final-score-text">Final Score: <span id="finalScore">0</span></p>
+      <p class="high-score-game-over">High Score: <span id="highScoreGameOver">0</span></p>
+      <button class="btn" onclick="startGame()">PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <!-- Game Scripts -->
+  <script src="js/constants.js"></script>
+  <script src="js/gameState.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/entities.js"></script>
+  <script src="js/powerups.js"></script>
+  <script src="js/weapons.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/gameLoop.js"></script>
+  <script src="js/gameController.js"></script>
+</body>
+
+</html>

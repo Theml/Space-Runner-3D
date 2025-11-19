@@ -1,0 +1,137 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  overflow: hidden;
+  font-family: "Courier New", monospace;
+}
+
+#renderCanvas {
+  width: 100%;
+  height: 100vh;
+  touch-action: none;
+}
+
+/* HUD Styles */
+#hud {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  color: white;
+  font-size: 24px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  z-index: 10;
+}
+
+#lives {
+  font-size: 20px;
+  margin-top: 10px;
+}
+
+#powerups {
+  font-size: 16px;
+  margin-top: 10px;
+  color: #00ff00;
+}
+
+#controls {
+  font-size: 14px;
+  margin-top: 10px;
+  opacity: 0.7;
+}
+
+/* Screen Styles */
+.screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 20;
+}
+
+.screen-content {
+  text-align: center;
+  color: white;
+}
+
+.screen h1 {
+  font-size: 72px;
+  margin-bottom: 20px;
+  color: #00ffff;
+  text-shadow: 0 0 20px #00ffff;
+}
+
+.screen h2 {
+  font-size: 60px;
+  margin-bottom: 30px;
+}
+
+.screen p {
+  font-size: 24px;
+  margin-bottom: 30px;
+}
+
+.high-score-text {
+  margin-top: 30px;
+  font-size: 20px;
+}
+
+.final-score-text {
+  font-size: 36px;
+}
+
+.high-score-game-over {
+  font-size: 24px;
+}
+
+/* Button Styles */
+.btn {
+  padding: 15px 40px;
+  font-size: 28px;
+  font-weight: bold;
+  color: white;
+  background: #00aaff;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: "Courier New", monospace;
+}
+
+.btn:hover {
+  background: #0088cc;
+  transform: scale(1.05);
+}
+
+.btn-restart {
+  margin-top: 20px;
+  background: #ff4444;
+}
+
+.btn-restart:hover {
+  background: #cc0000;
+}
+
+/* Utility Classes */
+.hidden {
+  display: none;
+}
+
+.game-over-title {
+  color: #ff3333;
+  text-shadow: 0 0 20px #ff3333;
+}
+
+.powerup-icon {
+  display: inline-block;
+  margin: 0 5px;
+  font-size: 20px;
+}
