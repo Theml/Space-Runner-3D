@@ -4,12 +4,20 @@ class GameController {
     this.setupEngine();
     this.gameState = new GameStateManager();
     this.uiManager = new UIManager();
-    this.player = new Player(this.scene);
+    this.shopManager = new ShopManager();
+    this.player = new Player(
+      this.scene,
+      this.shopManager.getEquippedShip().modelPath
+    );
     this.entityFactory = new EntityFactory(this.scene);
     this.powerUpManager = new PowerUpManager();
     this.weaponSystem = new WeaponSystem(this.entityFactory);
-    // Áudio do menu
+
+    // Sistema de áudio
     this.menuMusic = null;
+    this.gameplayMusic = null;
+    this.pauseMusic = null;
+    this.currentMusic = null;
     this._audioUnlocked = false;
 
     this.gameLoop = new GameLoop(
@@ -26,7 +34,7 @@ class GameController {
     this.inputManager = new InputManager(this.gameState, this);
 
     // Inicializa música e desbloqueio de áudio por interação do usuário
-    this.initMenuMusic();
+    this.initAllMusic();
     this.setupAudioUnlock();
 
     this.init();
@@ -76,9 +84,11 @@ class GameController {
     this.startRenderLoop();
     this.setupResize();
     this.uiManager.updateHighScore(this.gameState.highScore);
+    this.uiManager.updateCoins(this.shopManager.getCoins());
+    this.uiManager.updateMenuCoins(this.shopManager.getCoins());
     // Tenta tocar música do menu (pode ser bloqueado até interação)
     if (this.gameState.currentState === GameState.MENU) {
-      this.playMenuMusic();
+      this.playMusic("menu");
     }
   }
 
@@ -89,8 +99,8 @@ class GameController {
   }
 
   start() {
-    // Ao iniciar jogo, para a música do menu
-    this.stopMenuMusic();
+    // Ao iniciar jogo, muda para música de gameplay
+    this.stopAllMusic();
     this.gameState.clearGameObjects();
     this.gameState.reset();
 
@@ -104,20 +114,25 @@ class GameController {
     this.uiManager.showHUD(true);
     this.uiManager.updateScore(this.gameState.score);
     this.uiManager.updateLives(this.gameState.lives);
+    this.playMusic("gameplay");
   }
 
   pause() {
     this.gameState.game.isPlaying = false;
     this.gameState.setState(GameState.PAUSED);
+    this.stopAllMusic();
     this.uiManager.showHUD(false);
     this.uiManager.showScreen("pauseScreen");
+    this.playMusic("pause");
   }
 
   resume() {
     this.gameState.game.isPlaying = true;
     this.gameState.setState(GameState.PLAYING);
+    this.stopAllMusic();
     this.uiManager.hideAllScreens();
     this.uiManager.showHUD(true);
+    this.playMusic("gameplay");
   }
 
   goToMenu() {
@@ -125,15 +140,25 @@ class GameController {
     this.gameState.game.isPlaying = false;
     this.gameState.setState(GameState.MENU);
     this.gameState.clearGameObjects();
+    this.stopAllMusic();
     this.uiManager.showHUD(false);
     this.uiManager.showScreen("menuScreen");
-    this.playMenuMusic();
+    this.playMusic("menu");
   }
 
   gameOver() {
     this.gameState.game.isPlaying = false;
     this.gameState.setState(GameState.GAME_OVER);
-    this.uiManager.showGameOver(this.gameState.score, this.gameState.highScore);
+
+    // Adiciona moedas baseado na pontuação
+    const coinsEarned = this.shopManager.addCoins(this.gameState.score);
+
+    this.uiManager.showGameOver(
+      this.gameState.score,
+      this.gameState.highScore,
+      coinsEarned,
+      this.shopManager.getCoins()
+    );
   }
 
   shoot() {
@@ -142,6 +167,221 @@ class GameController {
 
     const projectiles = this.weaponSystem.shoot(position, this.powerUpManager);
     this.gameState.game.projectiles.push(...projectiles);
+  }
+
+  openShop() {
+    this.uiManager.showScreen("shopScreen");
+    this.populateShopGrid();
+  }
+
+  closeShop() {
+    this.cleanupShopPreviews();
+    this.uiManager.hideScreen("shopScreen");
+    this.uiManager.showScreen("menuScreen");
+    this.uiManager.updateMenuCoins(this.shopManager.getCoins());
+  }
+
+  cleanupShopPreviews() {
+    if (this.shopPreviews) {
+      this.shopPreviews.forEach((preview) => {
+        if (preview.engine) {
+          preview.engine.stopRenderLoop();
+          preview.scene.dispose();
+          preview.engine.dispose();
+        }
+      });
+      this.shopPreviews = [];
+    }
+  }
+
+  populateShopGrid() {
+    const shipGrid = document.getElementById("shipGrid");
+    const shopCoinsDisplay = document.getElementById("shopCoins");
+    const currentCoins = this.shopManager.getCoins();
+
+    shopCoinsDisplay.textContent = currentCoins;
+    shipGrid.innerHTML = "";
+
+    // Limpa previews anteriores
+    this.cleanupShopPreviews();
+    this.shopPreviews = [];
+
+    const ships = this.shopManager.ships;
+    const progress = this.shopManager.loadProgress();
+
+    ships.forEach((ship, index) => {
+      const isUnlocked = progress.unlockedShips.includes(ship.id);
+      const isEquipped = progress.equippedShip === ship.id;
+
+      const card = document.createElement("div");
+      card.className = "ship-card";
+      if (!isUnlocked) card.classList.add("locked");
+      if (isEquipped) card.classList.add("equipped");
+
+      const preview = document.createElement("div");
+      preview.className = "ship-preview";
+      preview.id = `ship-preview-${index}`;
+
+      const name = document.createElement("h3");
+      name.textContent = ship.name;
+
+      const price = document.createElement("div");
+      price.className = "ship-price";
+      price.textContent = isUnlocked ? "DESBLOQUEADA" : `🪙 ${ship.price}`;
+
+      card.appendChild(preview);
+      card.appendChild(name);
+      card.appendChild(price);
+
+      if (!isUnlocked) {
+        const buyBtn = document.createElement("button");
+        buyBtn.className = "btn btn-buy";
+        buyBtn.textContent = "COMPRAR";
+        buyBtn.disabled = currentCoins < ship.price;
+        buyBtn.onclick = () => this.buyShip(ship.id);
+        card.appendChild(buyBtn);
+      } else if (!isEquipped) {
+        const equipBtn = document.createElement("button");
+        equipBtn.className = "btn btn-equip";
+        equipBtn.textContent = "EQUIPAR";
+        equipBtn.onclick = () => this.equipShip(ship.id);
+        card.appendChild(equipBtn);
+      } else {
+        const equippedBtn = document.createElement("button");
+        equippedBtn.className = "btn btn-equipped";
+        equippedBtn.textContent = "EQUIPADA";
+        equippedBtn.disabled = true;
+        card.appendChild(equippedBtn);
+      }
+
+      shipGrid.appendChild(card);
+
+      // Renderiza o modelo 3D no preview
+      setTimeout(
+        () => this.createShipPreview(ship, preview.id, index),
+        50 * index
+      );
+    });
+  }
+
+  createShipPreview(ship, containerId, index) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const canvas = document.createElement("canvas");
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    container.appendChild(canvas);
+
+    const engine = new BABYLON.Engine(canvas, true, {
+      preserveDrawingBuffer: true,
+      stencil: true,
+    });
+    const scene = new BABYLON.Scene(engine);
+    scene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
+
+    // Camera - ajustada para melhor visualização
+    const camera = new BABYLON.ArcRotateCamera(
+      "previewCamera",
+      Math.PI / 2,
+      Math.PI / 3,
+      4.5,
+      BABYLON.Vector3.Zero(),
+      scene
+    );
+    camera.lowerRadiusLimit = 3;
+    camera.upperRadiusLimit = 8;
+    camera.attachControl(canvas, true);
+    camera.wheelPrecision = 50;
+
+    // Lighting - melhorada para destacar os modelos
+    const light1 = new BABYLON.HemisphericLight(
+      "light1",
+      new BABYLON.Vector3(1, 1, 0),
+      scene
+    );
+    light1.intensity = 1.0;
+
+    const light2 = new BABYLON.DirectionalLight(
+      "light2",
+      new BABYLON.Vector3(-1, -2, -1),
+      scene
+    );
+    light2.intensity = 0.8;
+
+    const light3 = new BABYLON.PointLight(
+      "light3",
+      new BABYLON.Vector3(2, 2, 2),
+      scene
+    );
+    light3.intensity = 0.6;
+
+    // Carrega o modelo
+    const pathInfo = this._splitPath(ship.modelPath);
+    BABYLON.SceneLoader.ImportMesh(
+      "",
+      pathInfo.rootUrl,
+      pathInfo.fileName,
+      scene,
+      (meshes) => {
+        if (meshes.length > 0) {
+          // Centraliza e escala o modelo
+          const boundingInfo = meshes[0].getHierarchyBoundingVectors(true);
+          const sizeVec = boundingInfo.max.subtract(boundingInfo.min);
+          const maxSize = Math.max(sizeVec.x, sizeVec.y, sizeVec.z);
+          const scale = 2.5 / maxSize;
+
+          meshes.forEach((mesh) => {
+            if (mesh) {
+              mesh.scaling.scaleInPlace(scale);
+              mesh.rotation.y = Math.PI;
+            }
+          });
+
+          // Animação de rotação suave
+          scene.registerBeforeRender(() => {
+            meshes.forEach((mesh) => {
+              if (mesh) {
+                mesh.rotation.y += 0.008;
+              }
+            });
+          });
+        }
+      },
+      null,
+      (scene, message) => {
+        console.warn(`Falha ao carregar preview de ${ship.name}:`, message);
+      }
+    );
+
+    engine.runRenderLoop(() => {
+      scene.render();
+    });
+
+    this.shopPreviews.push({ engine, scene, canvas });
+  }
+
+  _splitPath(fullPath) {
+    const parts = fullPath.split("/");
+    const fileName = parts.pop();
+    const rootUrl = parts.join("/") + "/";
+    return { rootUrl, fileName };
+  }
+
+  buyShip(shipId) {
+    if (this.shopManager.buyShip(shipId)) {
+      this.populateShopGrid();
+    } else {
+      alert("Moedas insuficientes!");
+    }
+  }
+
+  equipShip(shipId) {
+    if (this.shopManager.equipShip(shipId)) {
+      // Atualiza o modelo da nave do jogador
+      this.player.updateModel(this.shopManager.getEquippedShip().modelPath);
+      this.populateShopGrid();
+    }
   }
 
   startRenderLoop() {
@@ -156,129 +396,120 @@ class GameController {
     });
   }
 
-  // ====== Áudio do Menu ======
-  initMenuMusic() {
+  // ====== Sistema de Áudio ======
+  initAllMusic() {
     try {
-      const musicUrl = "assets/sounds/Running Through the Stars.mp3";
-      this.menuMusicReady = false;
+      console.log("[AUDIO] Inicializando sistema de música...");
+
+      // Música do Menu (Stardust Whispers)
+      this.menuMusic = this._createAudioTrack(
+        "assets/sounds/Stardust Whispers.mp3",
+        "menu"
+      );
+
+      // Música do Gameplay (Running Through the Stars)
+      this.gameplayMusic = this._createAudioTrack(
+        "assets/sounds/Running Through the Stars.mp3",
+        "gameplay"
+      );
+
+      // Música da Pausa (Galactic-Drift)
+      this.pauseMusic = this._createAudioTrack(
+        "assets/sounds/Galactic-Drift.mp3",
+        "pause"
+      );
+
       this.audioLoadRetries = 0;
       this.maxRetries = 3;
-
-      console.log("[AUDIO] Iniciando carregamento:", musicUrl);
-
-      // Para arquivos grandes (>2MB), HTMLAudio com streaming é mais eficiente
-      this.htmlAudio = new Audio(musicUrl);
-      this.htmlAudio.preload = "auto";
-      this.htmlAudio.loop = true;
-      this.htmlAudio.volume = 0.5;
-
-      // Listeners de progresso
-      this.htmlAudio.addEventListener("loadstart", () => {
-        console.log("[AUDIO] Download iniciado...");
-      });
-
-      this.htmlAudio.addEventListener("progress", (e) => {
-        if (e.lengthComputable) {
-          const percent = Math.round((e.loaded / e.total) * 100);
-          console.log(`[AUDIO] Carregando: ${percent}%`);
-        }
-      });
-
-      this.htmlAudio.addEventListener(
-        "canplaythrough",
-        () => {
-          console.log("[AUDIO] Áudio pronto para reprodução!");
-          this.menuMusicReady = true;
-        },
-        { once: true }
-      );
-
-      this.htmlAudio.addEventListener("error", (e) => {
-        console.error("[AUDIO] Erro ao carregar:", e);
-        console.error("[AUDIO] Detalhes:", this.htmlAudio.error);
-      });
-
-      // Inicia o carregamento
-      this.htmlAudio.load();
-
-      // Babylon.Sound como backup (opcional, só se HTMLAudio falhar)
-      this.menuMusic = new BABYLON.Sound(
-        "menuMusic",
-        musicUrl,
-        this.scene,
-        () => {
-          console.log("[AUDIO] Babylon.Sound carregado (backup)");
-        },
-        { loop: true, autoplay: false, volume: 0.5, streaming: true }
-      );
     } catch (e) {
-      console.error("[AUDIO] Falha ao inicializar música do menu:", e);
+      console.error("[AUDIO] Falha ao inicializar sistema de música:", e);
     }
   }
 
-  playMenuMusic() {
-    console.log("[AUDIO] Tentando tocar música do menu...");
+  _createAudioTrack(url, name) {
+    const audio = new Audio(url);
+    audio.preload = "auto";
+    audio.loop = true;
+    audio.volume = 0.3;
+    audio.trackName = name;
+    audio.ready = false;
 
-    // Prioriza HTMLAudio para arquivos grandes
-    if (this.htmlAudio) {
-      if (this.menuMusicReady || this.htmlAudio.readyState >= 3) {
-        // readyState 3 = HAVE_FUTURE_DATA, 4 = HAVE_ENOUGH_DATA
-        this.htmlAudio
-          .play()
-          .then(() => {
-            console.log("[AUDIO] ✓ Música tocando (HTMLAudio)");
-            this.audioLoadRetries = 0;
-          })
-          .catch((err) => {
-            console.error("[AUDIO] Erro ao tocar HTMLAudio:", err);
-            this._tryBabylonFallback();
-          });
-      } else {
-        // Ainda carregando - limita tentativas
-        if (this.audioLoadRetries < this.maxRetries) {
-          this.audioLoadRetries++;
-          console.log(
-            `[AUDIO] Aguardando carregamento... (tentativa ${this.audioLoadRetries}/${this.maxRetries})`
-          );
-          setTimeout(() => this.playMenuMusic(), 1000);
-        } else {
-          console.warn(
-            "[AUDIO] Timeout - arquivo pode ser muito grande ou conexão lenta"
-          );
-        }
-      }
+    audio.addEventListener(
+      "canplaythrough",
+      () => {
+        console.log(`[AUDIO] ${name} pronto para reprodução`);
+        audio.ready = true;
+      },
+      { once: true }
+    );
+
+    audio.addEventListener("error", (e) => {
+      console.error(`[AUDIO] Erro ao carregar ${name}:`, e);
+    });
+
+    audio.load();
+    return audio;
+  }
+
+  playMusic(type) {
+    let audio = null;
+
+    switch (type) {
+      case "menu":
+        audio = this.menuMusic;
+        break;
+      case "gameplay":
+        audio = this.gameplayMusic;
+        break;
+      case "pause":
+        audio = this.pauseMusic;
+        break;
+      default:
+        console.warn(`[AUDIO] Tipo de música desconhecido: ${type}`);
+        return;
+    }
+
+    if (!audio) {
+      console.warn(`[AUDIO] Música ${type} não inicializada`);
+      return;
+    }
+
+    console.log(`[AUDIO] Tentando tocar música: ${type}`);
+
+    if (audio.ready || audio.readyState >= 3) {
+      audio
+        .play()
+        .then(() => {
+          console.log(`[AUDIO] ✓ ${type} tocando`);
+          this.currentMusic = audio;
+          this.audioLoadRetries = 0;
+        })
+        .catch((err) => {
+          console.error(`[AUDIO] Erro ao tocar ${type}:`, err);
+        });
     } else {
-      this._tryBabylonFallback();
-    }
-  }
-
-   stopMenuMusic() {
-    if (this.menuMusic && this.menuMusic.isPlaying) {
-      try {
-        this.menuMusic.stop();
-      } catch (e) {}
-    }
-    if (this.htmlAudio) {
-      try {
-        this.htmlAudio.pause();
-        this.htmlAudio.currentTime = 0;
-      } catch (e) {}
-    }
-  }
-
-  _tryBabylonFallback() {
-    if (
-      this.menuMusic &&
-      this.menuMusic.isReady() &&
-      !this.menuMusic.isPlaying
-    ) {
-      try {
-        this.menuMusic.play();
-        console.log("[AUDIO] ✓ Música tocando (Babylon.Sound)");
-      } catch (e) {
-        console.error("[AUDIO] Falha no fallback Babylon.Sound:", e);
+      if (this.audioLoadRetries < this.maxRetries) {
+        this.audioLoadRetries++;
+        console.log(
+          `[AUDIO] Aguardando ${type}... (${this.audioLoadRetries}/${this.maxRetries})`
+        );
+        setTimeout(() => this.playMusic(type), 1000);
+      } else {
+        console.warn(`[AUDIO] Timeout ao carregar ${type}`);
       }
     }
+  }
+
+  stopAllMusic() {
+    [this.menuMusic, this.gameplayMusic, this.pauseMusic].forEach((audio) => {
+      if (audio && !audio.paused) {
+        try {
+          audio.pause();
+          audio.currentTime = 0;
+        } catch (e) {}
+      }
+    });
+    this.currentMusic = null;
   }
 
   setupAudioUnlock() {
@@ -300,7 +531,11 @@ class GameController {
         // Tenta tocar a música se estiver no menu
         if (this.gameState.currentState === GameState.MENU) {
           // Aguarda um pouco para garantir que tudo está pronto
-          setTimeout(() => this.playMenuMusic(), 100);
+          setTimeout(() => this.playMusic("menu"), 100);
+        } else if (this.gameState.currentState === GameState.PLAYING) {
+          setTimeout(() => this.playMusic("gameplay"), 100);
+        } else if (this.gameState.currentState === GameState.PAUSED) {
+          setTimeout(() => this.playMusic("pause"), 100);
         }
       }
     };
@@ -349,8 +584,31 @@ function quitGame() {
   }, 150);
 }
 
+function openShop() {
+  if (gameController) {
+    gameController.openShop();
+  }
+}
+
+function closeShop() {
+  if (gameController) {
+    gameController.closeShop();
+  }
+}
+
+function buyShip(shipId) {
+  if (gameController) {
+    gameController.buyShip(shipId);
+  }
+}
+
+function equipShip(shipId) {
+  if (gameController) {
+    gameController.equipShip(shipId);
+  }
+}
+
 // Initialize game when DOM is ready
 window.addEventListener("DOMContentLoaded", () => {
   gameController = new GameController();
 });
-

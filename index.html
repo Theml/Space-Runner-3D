@@ -18,6 +18,7 @@
   <div id="hud" class="hidden">
     <div id="score">Score: 0</div>
     <div id="lives">Lives: ❤️ ❤️ ❤️</div>
+    <div id="coins">Coins: <span id="coinCount">0</span></div>
     <div id="powerups">Power-ups: <span id="activePowerups">None</span></div>
     <div id="controls">WASD/Arrows: Move | SPACE: Shoot | ESC/P: Pause</div>
   </div>
@@ -27,7 +28,9 @@
     <div class="screen-content">
       <h1>SPACE RUNNER 3D</h1>
       <p>Dodge asteroids. Collect power-ups. Survive!</p>
+      <div class="menu-coins">🪙 Moedas: <span id="menuCoins">0</span></div>
       <button class="btn" onclick="startGame()">START GAME</button>
+      <button class="btn btn-secondary" onclick="openShop()">LOJA</button>
       <p class="high-score-text">High Score: <span id="highScoreMenu">0</span></p>
     </div>
   </div>
@@ -47,13 +50,30 @@
     <div class="screen-content">
       <h2 class="game-over-title">GAME OVER</h2>
       <p class="final-score-text">Final Score: <span id="finalScore">0</span></p>
+      <p class="coins-earned">🪙 Moedas Ganhas: <span id="coinsEarned">0</span></p>
       <p class="high-score-game-over">High Score: <span id="highScoreGameOver">0</span></p>
-      <button class="btn" onclick="startGame()">PLAY AGAIN</button>
+      <button class="btn" onclick="startGame()">JOGAR NOVAMENTE</button>
+      <button class="btn" onclick="goToMenu()">MENU</button>
+    </div>
+  </div>
+
+  <!-- Shop Screen -->
+  <div id="shopScreen" class="screen hidden">
+    <div class="screen-content shop-container">
+      <h2>🏪 LOJA DE NAVES</h2>
+      <div class="shop-header">
+        <p class="shop-coins">🪙 Suas Moedas: <span id="shopCoins">0</span></p>
+      </div>
+      <div id="shipGrid" class="ship-grid">
+        <!-- Ships will be populated by JavaScript -->
+      </div>
+      <button class="btn btn-close-shop" onclick="closeShop()">VOLTAR AO MENU</button>
     </div>
   </div>
 
   <!-- Game Scripts -->
   <script src="js/constants.js"></script>
+  <script src="js/shop.js"></script>
   <script src="js/gameState.js"></script>
   <script src="js/player.js"></script>
   <script src="js/entities.js"></script>

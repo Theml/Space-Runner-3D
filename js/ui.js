@@ -7,6 +7,20 @@ class UIManager {
     }
   }
 
+  updateCoins(coins) {
+    const coinElement = document.getElementById("coinCount");
+    if (coinElement) {
+      coinElement.textContent = coins;
+    }
+  }
+
+  updateMenuCoins(coins) {
+    const menuCoinsElement = document.getElementById("menuCoins");
+    if (menuCoinsElement) {
+      menuCoinsElement.textContent = coins;
+    }
+  }
+
   updateLives(lives) {
     const livesElement = document.getElementById("lives");
     if (livesElement) {
@@ -29,7 +43,12 @@ class UIManager {
   }
 
   showScreen(screenId) {
-    const screens = ["menuScreen", "pauseScreen", "gameOverScreen"];
+    const screens = [
+      "menuScreen",
+      "pauseScreen",
+      "gameOverScreen",
+      "shopScreen",
+    ];
     screens.forEach((id) => {
       const screen = document.getElementById(id);
       if (screen) {
@@ -40,6 +59,13 @@ class UIManager {
         }
       }
     });
+  }
+
+  hideScreen(screenId) {
+    const screen = document.getElementById(screenId);
+    if (screen) {
+      screen.classList.add("hidden");
+    }
   }
 
   showHUD(visible) {
@@ -53,11 +79,17 @@ class UIManager {
     }
   }
 
-  showGameOver(score, highScore) {
+  showGameOver(score, highScore, coinsEarned, totalCoins) {
     const finalScoreElement = document.getElementById("finalScore");
     if (finalScoreElement) {
       finalScoreElement.textContent = score;
     }
+
+    const coinsEarnedElement = document.getElementById("coinsEarned");
+    if (coinsEarnedElement) {
+      coinsEarnedElement.textContent = coinsEarned;
+    }
+
     this.updateHighScore(highScore);
     this.showScreen("gameOverScreen");
   }

@@ -14,13 +14,14 @@ class PowerUpManager {
       this.activePowerUps.set(type, duration - 1);
       if (duration <= 1) {
         this.activePowerUps.delete(type);
+
+        // Restaura velocidade ao remover slow motion
+        if (type === PowerUpType.SLOW_MOTION) {
+          gameState.game.speed =
+            GameConfig.INITIAL_SPEED + gameState.score * 0.0001;
+        }
       }
     });
-
-    // Aplicar efeito de slow motion
-    if (this.activePowerUps.has(PowerUpType.SLOW_MOTION)) {
-      gameState.game.speed = Math.max(0.05, gameState.game.speed * 0.7);
-    }
 
     this.updateDisplay();
   }

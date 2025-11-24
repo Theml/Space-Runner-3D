@@ -38,6 +38,23 @@ class GameLoop {
     this.updateSpeed();
   }
 
+  updateSpeed() {
+    // Calcula velocidade base
+    const baseSpeed = GameConfig.INITIAL_SPEED + this.gameState.score * 0.0001;
+
+    // Aplica slow motion se ativo
+    if (this.powerUpManager.has(PowerUpType.SLOW_MOTION)) {
+      this.gameState.game.speed = baseSpeed * 0.5;
+    } else {
+      this.gameState.game.speed = baseSpeed;
+    }
+
+    this.gameState.game.speed = Math.min(
+      this.gameState.game.speed,
+      GameConfig.MAX_SPEED
+    );
+  }
+
   updatePlayer() {
     this.player.move(this.gameState.game.keys);
 
@@ -101,10 +118,74 @@ class GameLoop {
   updateAsteroids() {
     for (let i = this.gameState.game.asteroids.length - 1; i >= 0; i--) {
       const asteroid = this.gameState.game.asteroids[i];
+
+      // Valida se o asteroide existe e tem propriedades corretas
+       if (!asteroid || !asteroid.position || !asteroid.rotationSpeed) {
+        console.warn("Asteroide inválido detectado, removendo...");
+        if (asteroid) asteroid.dispose();
+        this.gameState.game.asteroids.splice(i, 1);
+        continue;
+      }
+
+      // CRÍTICO: Remove asteroides em (0,0,0) IMEDIATAMENTE
+      if (
+        asteroid.position.x === 0 && 
+        asteroid.position.y === 0 && 
+        asteroid.position.z === 0
+      ) {
+        console.error("CRITICAL: Asteroide em (0,0,0) detectado! Removendo imediatamente!");
+        asteroid.dispose();
+        this.gameState.game.asteroids.splice(i, 1);
+        continue;
+      }
+
+      // Valida posição - remove se estiver em posição inválida ou fora dos limites
+      if (
+        asteroid.position.z < -2 || 
+        asteroid.position.z > 100 ||
+        Math.abs(asteroid.position.x) > 20 ||
+        Math.abs(asteroid.position.y) > 15
+      ) {
+        asteroid.dispose();
+        this.gameState.game.asteroids.splice(i, 1);
+        continue;
+      }
+
+      // Inicializa rastreamento se não existir
+      if (!asteroid.metadata) {
+        asteroid.metadata = { stuckFrames: 0, initialZ: asteroid.position.z };
+      }
+
+      const previousZ = asteroid.position.z;
+
       asteroid.position.z -=
         this.gameState.game.speed + this.gameState.game.speed * 0.3;
       asteroid.rotation.x += asteroid.rotationSpeed.x;
       asteroid.rotation.y += asteroid.rotationSpeed.y;
+
+      // Detecta asteroide travado
+      const moved = Math.abs(previousZ - asteroid.position.z);
+      if (
+        moved < 0.01 &&
+        asteroid.position.z > -5 &&
+        asteroid.position.z < 45
+      ) {
+        asteroid.metadata.stuckFrames++;
+
+        // Remove se ficou travado por mais de 30 frames (0.5 segundos)
+        if (asteroid.metadata.stuckFrames > 30) {
+          console.warn("Asteroide travado removido:", {
+            position: asteroid.position.clone(),
+            moved: moved,
+            frames: asteroid.metadata.stuckFrames,
+          });
+          asteroid.dispose();
+          this.gameState.game.asteroids.splice(i, 1);
+          continue;
+        }
+      } else {
+        asteroid.metadata.stuckFrames = 0;
+      }
 
       if (asteroid.position.z < -10) {
         asteroid.dispose();
@@ -236,16 +317,6 @@ class GameLoop {
     }
   }
 
-  updateSpeed() {
-    if (!this.powerUpManager.has(PowerUpType.SLOW_MOTION)) {
-      this.gameState.game.speed = Math.min(
-        this.gameState.game.speed + GameConfig.SPEED_INCREMENT,
-        GameConfig.MAX_SPEED
-      );
-    }
-  }
-
   onGameOver() {
-    // Será definido pelo GameController
   }
 }

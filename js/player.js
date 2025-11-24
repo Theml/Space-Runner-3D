@@ -4,20 +4,15 @@ class Player {
     this.scene = scene;
     this.mesh = null;
     this.trail = [];
-    // Config do modelo 3D (glb/gltf)
-    this.modelPath = modelPath || "../assets/player/Spaceship.glb"; // ajuste o caminho conforme seu projeto
-    this.modelScale = 1.2; // ajuste de escala do modelo
-    this.modelRotation = new BABYLON.Vector3(0, 0, 0); // rotação em radianos
-    this.modelOffset = new BABYLON.Vector3(0, 0, 0); // deslocamento local do modelo
-    this._modelContainer = null; // nó/raiz do modelo importado
-    this.visualMeshes = []; // lista de partes visuais (modelo ou fallback) que podem piscar
+    this.modelPath = modelPath || "../assets/player/Spaceship.glb";
+    this.modelScale = 1.2;
+    this.modelRotation = new BABYLON.Vector3(0, 0, 0);
+    this.modelOffset = new BABYLON.Vector3(0, 0, 0);
+    this._modelContainer = null;
+    this.visualMeshes = [];
   }
 
-  // como usar o .glp para criar a nave em vez do box e cylinder ?
-
   create() {
-    // 1) Cria um mesh simples para colisão e como "raiz" da nave
-    //    Mantemos um box invisível para preservar colisões e o fluxo atual
     this.mesh = BABYLON.MeshBuilder.CreateBox(
       "shipCollision",
       { height: 0.6, width: 1.0, depth: 1.6 },
@@ -25,15 +20,13 @@ class Player {
     );
     this.mesh.position.y = 2;
     this.mesh.position.z = 0;
-    this.mesh.visibility = 0; // invisível, mas ainda útil para colisões
+    this.mesh.visibility = 0;
 
-    // 2) Tenta carregar o modelo .glb/.gltf
     this._loadShipModel();
 
-    // 3) Cria rastro atrelado à raiz (mesh de colisão)
     this.createTrail();
 
-    return this.mesh; // compatível com o código existente
+    return this.mesh;
   }
 
   createTrail() {
@@ -66,24 +59,27 @@ class Player {
     const rootUrl = pathInfo.rootUrl;
     const fileName = pathInfo.fileName;
 
-    // Contêiner/nó para organizar as malhas do modelo importado
+    // Limpa modelo anterior se existir
+    if (this._modelContainer) {
+      this._modelContainer.dispose();
+      this._modelContainer = null;
+      this.visualMeshes = [];
+    }
+
     const container = new BABYLON.TransformNode("shipModelRoot", this.scene);
-    container.parent = this.mesh; // parent no mesh de colisão
+    container.parent = this.mesh;
     container.position.copyFrom(this.modelOffset);
     container.rotation.copyFrom(this.modelRotation);
     container.scaling.set(this.modelScale, this.modelScale, this.modelScale);
     this._modelContainer = container;
 
-    // Importa apenas as malhas; mantém animações se existirem
     BABYLON.SceneLoader.ImportMesh(
       "",
       rootUrl,
       fileName,
       this.scene,
       (meshes, particleSystems, skeletons, animationGroups) => {
-        // Reparenta todas as malhas importadas para o container
         meshes.forEach((m) => {
-          // evita reparentar a raiz se já for o próprio container
           if (m && m !== container) {
             m.parent = container;
             this.visualMeshes.push(m);
@@ -92,15 +88,18 @@ class Player {
       },
       null,
       (scene, message, exception) => {
-        // Falhou: usa um fallback visual simples para não ficar invisível
         this._createVisualFallback();
         console.warn("Falha ao carregar modelo da nave:", message || exception);
       }
     );
   }
 
+  updateModel(newModelPath) {
+    this.modelPath = newModelPath;
+    this._loadShipModel();
+  }
+
   _createVisualFallback() {
-    // Fallback simples (parecido com o antigo), agora como filho do mesh de colisão
     const material = new BABYLON.StandardMaterial(
       "shipMatFallback",
       this.scene
@@ -147,7 +146,6 @@ class Player {
   }
 
   _splitPath(fullPath) {
-    // Aceita formatos tipo "assets/ship.glb" ou "assets/models/ship.gltf"
     const lastSlash = Math.max(
       fullPath.lastIndexOf("/"),
       fullPath.lastIndexOf("\\")
@@ -164,7 +162,6 @@ class Player {
   move(keys) {
     if (!this.mesh) return;
 
-    // Movimento horizontal
     if (keys["a"] || keys["arrowleft"]) {
       this.mesh.position.x -= GameConfig.SHIP_MOVE_SPEED;
     }
@@ -172,7 +169,6 @@ class Player {
       this.mesh.position.x += GameConfig.SHIP_MOVE_SPEED;
     }
 
-    // Movimento vertical
     if (keys["w"] || keys["arrowup"]) {
       this.mesh.position.y = Math.min(
         this.mesh.position.y + GameConfig.SHIP_MOVE_SPEED,
@@ -186,13 +182,11 @@ class Player {
       );
     }
 
-    // Limitar movimento horizontal
     this.mesh.position.x = Math.max(
       -GameConfig.SHIP_MAX_X,
       Math.min(GameConfig.SHIP_MAX_X, this.mesh.position.x)
     );
 
-    // Animação de inclinação
     if (keys["a"] || keys["arrowleft"]) {
       this.mesh.rotation.z = Math.min(this.mesh.rotation.z + 0.05, 0.3);
     } else if (keys["d"] || keys["arrowright"]) {
@@ -204,7 +198,7 @@ class Player {
 
   updateInvulnerability(invulnerable, timer) {
     if (!this.mesh) return;
-    // Mantém hitbox (this.mesh) sempre invisível e pisca somente visualMeshes
+
     if (invulnerable) {
       const v = Math.sin(timer * 0.5) > 0 ? 1 : 0.3;
       this.visualMeshes.forEach((m) => (m.visibility = v));
