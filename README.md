@@ -210,19 +210,23 @@ O jogo inclui múltiplas camadas de validação:
 
 ### Menu Principal
 
-![Menu com opção de jogar e acessar loja](docs/screenshot-menu.png)
+![Menu com opção de jogar e acessar loja](docs/MenuScreenshot.png)
 
 ### Gameplay
 
-![Jogador desviando de asteroides no espaço](docs/screenshot-gameplay.png)
+![Jogador desviando de asteroides no espaço](docs/GameplayScreenshot.png)
 
 ### Loja de Naves
 
-![Interface da loja com modelos 3D renderizados](docs/screenshot-shop.png)
+![Interface da loja com modelos 3D renderizados](docs/ShopScreenshot.png)
+
+### Pause
+
+![Pause com opção de continuar jogando, acessar a Menu Principal ou sair do jogo.](docs/PauseScreenshot.png)
 
 ### Game Over
 
-![Tela de game over mostrando pontuação e moedas ganhas](docs/screenshot-gameover.png)
+![Tela de game over mostrando pontuação e moedas ganhas](docs/GameOverScreenshot.png)
 
 ## 🎯 Requisitos Atendidos
 
@@ -283,3 +287,4 @@ Luis Gustavo Theml, Marciana Pereira e Maicon Oliveira
 **Professor(a):** Cristian Rachid  
 **Instituição:** UniAcademia
 **Ano:** 2025
+
